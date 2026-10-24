@@ -22,7 +22,8 @@ const supportedProviders = ['github', 'gitlab'];
  */
 const providerScopes = {
   github: {
-    default: 'repo,user',
+    // Mt Crosby History: `repo` only; see the note on `user` in getScope
+    default: 'repo',
     separator: ',',
     allowed: ['repo', 'public_repo', 'user', 'read:user', 'user:email'],
   },
@@ -44,6 +45,14 @@ const providerScopes = {
 const getScope = (provider, requested, env) => {
   const { default: fallback, separator, allowed } = providerScopes[provider];
   let scopes = (requested ?? '').split(/[\s,]+/).filter(Boolean);
+
+  // Mt Crosby History: Sveltia CMS always asks for `user`, which grants read and write access to the
+  // editor's profile, private email addresses and follows. The CMS only reads the public profile
+  // (`GET /user`), which needs no scope, and GitHub credits commits to the signed-in user itself, so
+  // drop it
+  if (provider === 'github') {
+    scopes = scopes.filter((scope) => scope !== 'user');
+  }
   const allowWorkflow = provider === 'github' && env.GITHUB_ALLOW_WORKFLOW_SCOPE === 'true';
 
   // The `workflow` scope lets a token change GitHub Actions workflows in every repository the user
